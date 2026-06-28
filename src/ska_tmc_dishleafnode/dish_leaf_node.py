@@ -209,9 +209,15 @@ class MidTmcLeafNodeDish(TMCBaseLeafDevice):
         to_tango=json.dumps,
     )
 
-    isSubsystemAvailable = attribute(
-        dtype=bool,
+    _is_subsystem_available: Signal[bool] = Signal[bool](
+        stored=True, initial_value=False
+    )
+
+    isSubsystemAvailable: attribute_from_signal = attribute_from_signal(
+        _is_subsystem_available,
         access=AttrWriteType.READ,
+        dtype="DevBoolean",
+        description="Boolean Flag for sub system available",
     )
 
     _dishMode: Signal[DishMode] = Signal[DishMode](stored=True)
@@ -268,10 +274,8 @@ class MidTmcLeafNodeDish(TMCBaseLeafDevice):
         self._last_pointing_data_attr_quality = getattr(
             AttrQuality, "ATTR_VALID"
         )
-        self._isSubsystemAvailable = False
 
         for attribute_name in [
-            "isSubsystemAvailable",
             "sdpQueueConnectorFqdn",
             "lastPointingData",
             "kValue",
@@ -429,22 +433,21 @@ class MidTmcLeafNodeDish(TMCBaseLeafDevice):
         )
 
     def update_availablity_callback(self, availability):
-        """Change event callback for isSubsystemAvailable"""
-        if self._isSubsystemAvailable != availability:
-            self._isSubsystemAvailable = availability
-            self.logger.info("Updating availability to %s", availability)
-            with tango.EnsureOmniThread():
-                self.push_change_archive_events(
-                    "isSubsystemAvailable", availability
-                )
+        """Change event callback for isSubsystemAvailable.
 
-    def read_isSubsystemAvailable(self) -> bool:
-        """Read method for isSubsystemAvailable
-
-        Returns:
-            bool: value of isSubsystemAvailable.
+        This callback is invoked by the liveliness probe on every monitoring
+        tick (~1 Hz), regardless of whether the availability actually changed.
+        Setting the ``_is_subsystem_available`` signal emits a value on the
+        SignalBus, so we must only do so on a genuine transition. Emitting on
+        every tick floods the bus with redundant events; because
+        ``SignalBusMixin.always_executed_hook`` waits for the bus thread to
+        drain before servicing each Tango request, that flood starves the bus
+        thread and causes requests to time out, which makes the device appear
+        unavailable to TMC (SKB-1306).
         """
-        return self._isSubsystemAvailable
+        if self._is_subsystem_available != availability:
+            self.logger.info("Updating availability to %s", availability)
+            self._is_subsystem_available = availability
 
     def update_track_table_errors_callback(self, value: list):
         """Push an event for the trackTableErrors attribute."""

@@ -1,12 +1,12 @@
 """Release information for Python Package"""
 
 name="""ska-tmc-dishleafnode"""
-version="0.45.3"
+version="0.45.4"
 version_info=version.split(".")
 description="""SKA-TMC-DISHLEAFNODES"""
 author="Team NCRA"
 license="""BSD-3-Clause"""
 url="""https://www.skaobservatory.org"""
 copyright=""""""
-release=0.45.3
-tag=0.45.3
+release=0.45.4
+tag=0.45.4

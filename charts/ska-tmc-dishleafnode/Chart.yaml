@@ -2,8 +2,8 @@ apiVersion: v2
 name: ska-tmc-dishleafnode
 description: A subchart for ska-tmc-dishleafnode deployment.
 type: application
-version: 0.45.3
-appVersion: 0.45.3
+version: 0.45.4
+appVersion: 0.45.4
 icon: https://www.skatelescope.org/wp-content/uploads/2016/07/09545_NEW_LOGO_2014.png
 maintainers:
   - name: Team Sahyadri, Team Himalaya

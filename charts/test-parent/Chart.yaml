@@ -16,7 +16,7 @@ dependencies:
     version: 1.0.7
     repository: https://artefact.skao.int/repository/helm-internal
   - name: ska-tmc-dishleafnode
-    version: 0.45.3
+    version: 0.45.4
     repository: file://../ska-tmc-dishleafnode
     alias: tmc-dishleafnode
   - name: ska-taranta

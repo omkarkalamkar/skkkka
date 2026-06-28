@@ -5,6 +5,16 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`_.
 
+[0.45.4]
+********
+Fixed
+-----
+* SKB-1306: Re-implemented ``isSubsystemAvailable`` using the ska-tango-base
+  signal mechanism (``attribute_from_signal``). The availability callback now
+  emits on the signal bus only when the value actually changes, instead of on
+  every liveliness probe tick, preventing the SignalBus flood that previously
+  caused Tango request timeouts and made the dish appear unavailable to TMC.
+
 [0.45.3]
 ********
 Updated
