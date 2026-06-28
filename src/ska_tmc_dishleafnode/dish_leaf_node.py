@@ -449,6 +449,21 @@ class MidTmcLeafNodeDish(TMCBaseLeafDevice):
             self.logger.info("Updating availability to %s", availability)
             self._is_subsystem_available = availability
 
+    @command(
+        dtype_in=int,
+        doc_in="Number of liveliness ticks to simulate (each reports available).",
+    )
+    def SimulateAvailabilityTicks(self, number_of_ticks: int) -> None:
+        """SKB-1306 measurement: invoke the availability callback `n` times.
+
+        Each call mimics one liveliness-probe tick reporting the dish as
+        available. Counting the resulting "Updating availability" log lines /
+        SignalBus emissions shows the flood (N ticks -> N emits on the broken
+        build, vs N ticks -> 1 emit on the fixed build).
+        """
+        for _ in range(int(number_of_ticks)):
+            self.update_availablity_callback(True)
+
     def update_track_table_errors_callback(self, value: list):
         """Push an event for the trackTableErrors attribute."""
         self._track_table_errors = value
