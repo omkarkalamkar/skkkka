@@ -433,21 +433,16 @@ class MidTmcLeafNodeDish(TMCBaseLeafDevice):
         )
 
     def update_availablity_callback(self, availability):
-        """Change event callback for isSubsystemAvailable.
+        """SKB-1306 MEASUREMENT ONLY -- reproduces the old (pre-fix) behaviour.
 
-        This callback is invoked by the liveliness probe on every monitoring
-        tick (~1 Hz), regardless of whether the availability actually changed.
-        Setting the ``_is_subsystem_available`` signal emits a value on the
-        SignalBus, so we must only do so on a genuine transition. Emitting on
-        every tick floods the bus with redundant events; because
-        ``SignalBusMixin.always_executed_hook`` waits for the bus thread to
-        drain before servicing each Tango request, that flood starves the bus
-        thread and causes requests to time out, which makes the device appear
-        unavailable to TMC (SKB-1306).
+        WARNING: do NOT merge this branch. The change-guard has been removed so
+        that the signal is set (and therefore emitted on the SignalBus) on
+        EVERY liveliness-probe tick (~1 Hz), even when the value is unchanged.
+        This is the flood that SKB-1306 fixes; this branch exists only to
+        measure the emission rate for comparison against the fixed build.
         """
-        if self._is_subsystem_available != availability:
-            self.logger.info("Updating availability to %s", availability)
-            self._is_subsystem_available = availability
+        self.logger.info("Updating availability to %s", availability)
+        self._is_subsystem_available = availability
 
     def update_track_table_errors_callback(self, value: list):
         """Push an event for the trackTableErrors attribute."""
