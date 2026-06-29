@@ -459,6 +459,27 @@ class MidTmcLeafNodeDish(TMCBaseLeafDevice):
         for _ in range(int(number_of_ticks)):
             self.update_availablity_callback(True)
 
+    @command(
+        dtype_in=int,
+        doc_in="Total availability emissions to fire from a background thread.",
+    )
+    def StartAvailabilityFlood(self, total: int) -> None:
+        """SKB-1306 measurement: flood the SignalBus from a background thread.
+
+        Returns immediately and drives ``update_availablity_callback`` from a
+        daemon thread (mimicking the liveliness probe's own thread), so the
+        device's request-serving thread is NOT occupied. This isolates the
+        SignalBus effect: while this runs, a separate client can measure whether
+        a normal Tango read latency increases / times out at 3.2s.
+        """
+        import threading
+
+        def _run() -> None:
+            for _ in range(int(total)):
+                self.update_availablity_callback(True)
+
+        threading.Thread(target=_run, daemon=True, name="skb1306-flood").start()
+
     def update_track_table_errors_callback(self, value: list):
         """Push an event for the trackTableErrors attribute."""
         self._track_table_errors = value
