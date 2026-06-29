@@ -236,12 +236,32 @@ reads as available → Configure Scan proceeds normally.
   - a genuine `False→True→…→True` sequence → **3** emissions (no real change is
     dropped);
   - the pre-fix (unguarded) reference → **100** emissions (the bug, pinned).
+- **Timeout-mechanism test (passing)** `tests/unit/test_signalbus_timeout.py`
+  exercises the real `ska_tango_base` SignalBus: when the bus cannot drain within
+  the 3.2s request budget (the value used by
+  `SignalBusMixin.always_executed_hook`), the request-side wait raises
+  `TimedOutError` — the downstream failure that reaches TMC as
+  `API_CommandTimedOut`. (A slow observer stands in for slow/contended
+  `push_change_event`; this proves the *mechanism*, not that 1 Hz alone triggers
+  it — see the honest note below.) The control case confirms an idle bus returns
+  in well under the budget.
 - **Integration test** `tests/integration/test_skb_1306.py` passes in the k8s
   deployment: availability is `True`, stable for 15s, no spurious events.
 - **Write-rate check:** `"Updating availability"` count stays flat over long
   uptime on the fixed build (observed: `2` at startup, still `2` after 90 min).
 - **Deterministic demo:** `SimulateAvailabilityTicks(N)` → fixed build emits once
   vs broken build emits N times.
+
+**Honest scope of the evidence.** What is *measured*: (a) the old callback wrote
+the signal on every tick while the fixed one writes only on change (flood removed),
+and (b) the base-class request-side wait times out at 3.2s when the bus cannot
+drain in time. What is *inferred from the base-class source* rather than measured
+end-to-end: that the production timeouts were driven specifically by this
+availability traffic. A literal 1 Hz write does not by itself build a 3.2s
+backlog; the timeout is reached when draining is slow (contended
+`push_change_event` to real subscribers, GIL/monitor pressure, combined traffic).
+The fix is correct regardless: it removes avoidable, redundant bus traffic and
+keeps the bus quiet, which is independently verified by the tests above.
 
 ---
 
