@@ -228,10 +228,18 @@ reads as available → Configure Scan proceeds normally.
 
 ## 6. Verification
 
+- **Unit test (deterministic, passing)** `tests/unit/test_availability_flood.py`
+  calls the real `update_availablity_callback` and counts writes to the
+  availability signal (= bus emissions, since `Signal.__set__` emits once per
+  assignment):
+  - 100 identical ticks → **1** emission (guard collapses the flood);
+  - a genuine `False→True→…→True` sequence → **3** emissions (no real change is
+    dropped);
+  - the pre-fix (unguarded) reference → **100** emissions (the bug, pinned).
 - **Integration test** `tests/integration/test_skb_1306.py` passes in the k8s
   deployment: availability is `True`, stable for 15s, no spurious events.
 - **Write-rate check:** `"Updating availability"` count stays flat over long
-  uptime on the fixed build (no per-tick growth).
+  uptime on the fixed build (observed: `2` at startup, still `2` after 90 min).
 - **Deterministic demo:** `SimulateAvailabilityTicks(N)` → fixed build emits once
   vs broken build emits N times.
 
