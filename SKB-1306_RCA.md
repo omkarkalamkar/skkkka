@@ -245,6 +245,13 @@ reads as available → Configure Scan proceeds normally.
   `push_change_event`; this proves the *mechanism*, not that 1 Hz alone triggers
   it — see the honest note below.) The control case confirms an idle bus returns
   in well under the budget.
+- **1 Hz characterisation test (passing)**
+  `tests/unit/test_one_hz_flood_characterisation.py` measures, against the real
+  bus, whether the emit *rate* alone saturates it. Result (both cases pass): at
+  ~1 Hz with fast delivery the bus drains each emission long before the next
+  arrives (request-side wait < 0.2s, never near 3.2s); a backlog/timeout appears
+  **only** when per-emission delivery is slower than the emit interval. The emit
+  rate itself is therefore not the saturation cause — slow/contended delivery is.
 - **Integration test** `tests/integration/test_skb_1306.py` passes in the k8s
   deployment: availability is `True`, stable for 15s, no spurious events.
 - **Write-rate check:** `"Updating availability"` count stays flat over long
@@ -253,15 +260,23 @@ reads as available → Configure Scan proceeds normally.
   vs broken build emits N times.
 
 **Honest scope of the evidence.** What is *measured*: (a) the old callback wrote
-the signal on every tick while the fixed one writes only on change (flood removed),
-and (b) the base-class request-side wait times out at 3.2s when the bus cannot
-drain in time. What is *inferred from the base-class source* rather than measured
-end-to-end: that the production timeouts were driven specifically by this
-availability traffic. A literal 1 Hz write does not by itself build a 3.2s
-backlog; the timeout is reached when draining is slow (contended
-`push_change_event` to real subscribers, GIL/monitor pressure, combined traffic).
-The fix is correct regardless: it removes avoidable, redundant bus traffic and
-keeps the bus quiet, which is independently verified by the tests above.
+the signal on every tick while the fixed one writes only on change (flood
+removed); (b) the base-class request-side wait times out at 3.2s when the bus
+cannot drain in time; and (c) a ~1 Hz emit rate **on its own does not** saturate
+the bus — a backlog only forms when per-emission delivery is slower than the emit
+interval. So the emit *rate* is not the standalone cause; the cause is the
+combination of avoidable redundant emissions and slow/contended delivery
+(`push_change_event` to real subscribers, GIL/monitor pressure, combined signal
+traffic) under real load. What is *inferred* (not reproduced end-to-end in our
+environment): that availability traffic was a dominant contributor in
+production. This is plausible because `isSubsystemAvailable` was the only signal
+driven unconditionally by the fixed 1 Hz liveliness probe, whereas the other
+signal-backed attributes emit on actual change events (infrequent when idle) —
+so it was the main *continuous* emitter. The fix is correct regardless: it
+removes this avoidable continuous bus traffic entirely, so the availability
+signal can no longer contribute to such a backlog. The team also independently
+verified that an equivalent dev image (without the per-tick availability emit)
+resolved the issue in a real environment.
 
 ---
 
